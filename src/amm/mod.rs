@@ -18,6 +18,7 @@ use alloy::{
 };
 use async_trait::async_trait;
 use balancer_v2::BalancerV2Pool;
+use provider::BlockchainDataProvider;
 use serde::{Deserialize, Serialize};
 
 use crate::errors::AMMError;
@@ -68,6 +69,15 @@ pub trait AutomatedMarketMaker {
         T: Transport + Clone,
         N: Network,
         P: Provider<T, N> + Clone;
+
+    /// Populates the AMM data using **only** knowledge of the EVM storage layout
+    async fn populate_abstract<P>(
+        &mut self,
+        block_number: Option<u64>,
+        provider: P,
+    ) -> Result<(), AMMError>
+    where
+        P: BlockchainDataProvider;
 
     /// Locally simulates a swap in the AMM.
     ///
