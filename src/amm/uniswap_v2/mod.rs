@@ -7,7 +7,7 @@ use crate::{
 };
 use alloy::{
     network::Network,
-    primitives::{Address, Bytes, B256, U256},
+    primitives::{Address, Bytes, StorageKey, StorageValue, B256, U256},
     providers::Provider,
     rpc::types::eth::Log,
     sol,
@@ -20,6 +20,8 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
 use self::factory::IUniswapV2Factory;
+
+use super::provider::BlockchainDataProvider;
 
 sol! {
     /// Interface of the UniswapV2Pair
@@ -82,6 +84,31 @@ impl AutomatedMarketMaker for UniswapV2Pool {
         P: Provider<T, N> + Clone,
     {
         batch_request::get_v2_pool_data_batch_request(self, provider.clone()).await?;
+
+        Ok(())
+    }
+
+    async fn populate_abstract<P>(
+        &mut self,
+        _block_number: Option<u64>,
+        provider: P,
+    ) -> Result<(), AMMError>
+    where
+        P: BlockchainDataProvider + Send,
+    {
+        let slots: Vec<StorageKey> = vec![]; /* TODO(jmcph4): Storage mapping for UniV2 */
+        let mut words: Vec<StorageValue> = vec![];
+
+        for slot in slots {
+            words.push(
+                provider
+                    .storage_slot_at(self.address, slot)
+                    .await
+                    .map_err(|_| AMMError::PoolDataError)?,
+            );
+        }
+
+        /* TODO(jmcph4): actually handle pool data */
 
         Ok(())
     }
