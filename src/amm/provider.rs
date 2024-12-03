@@ -16,7 +16,7 @@ pub trait BlockchainDataProvider {
         &self,
         address: Address,
         slot: StorageKey,
-    ) -> impl Future<Output = Result<StorageValue, Self::Error>>;
+    ) -> impl Future<Output = Result<StorageValue, Self::Error>> + Send;
 }
 
 /// Newtype wrapper around Alloy's [`Provider`] trait

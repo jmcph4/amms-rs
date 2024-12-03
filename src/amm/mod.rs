@@ -77,7 +77,7 @@ pub trait AutomatedMarketMaker {
         provider: P,
     ) -> Result<(), AMMError>
     where
-        P: BlockchainDataProvider;
+        P: BlockchainDataProvider + Send;
 
     /// Locally simulates a swap in the AMM.
     ///
