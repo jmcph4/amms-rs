@@ -7,21 +7,29 @@ use crate::{
 };
 use alloy::{
     network::Network,
-    primitives::{Address, Bytes, StorageKey, StorageValue, B256, U256},
+    primitives::{Address, Bytes, StorageValue, B256, U256},
     providers::Provider,
     rpc::types::eth::Log,
     sol,
-    sol_types::{SolCall, SolEvent},
+    sol_types::{SolCall, SolEvent, SolValue},
     transports::Transport,
 };
 use async_trait::async_trait;
 use num_bigfloat::BigFloat;
+use phf::phf_map;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use tracing::instrument;
 
 use self::factory::IUniswapV2Factory;
 
-use super::provider::BlockchainDataProvider;
+use super::{provider::BlockchainDataProvider, slot_from_offset_and_address};
+
+static UNIV2_STORAGE_MAP: phf::Map<&'static str, u64> = phf_map! {
+    "token0" => 9,
+    "token1" => 10,
+    "reserves" => 0,
+};
 
 sol! {
     /// Interface of the UniswapV2Pair
@@ -96,19 +104,28 @@ impl AutomatedMarketMaker for UniswapV2Pool {
     where
         P: BlockchainDataProvider + Send,
     {
-        let slots: Vec<StorageKey> = vec![]; /* TODO(jmcph4): Storage mapping for UniV2 */
-        let mut words: Vec<StorageValue> = vec![];
+        let mut words: HashMap<&'static str, StorageValue> = HashMap::new();
 
-        for slot in slots {
-            words.push(
+        for (var, offset) in &UNIV2_STORAGE_MAP {
+            words.insert(
+                var,
                 provider
-                    .storage_slot_at(self.address, slot)
+                    .storage_slot_at(
+                        self.address,
+                        slot_from_offset_and_address(*offset, self.address),
+                    )
                     .await
                     .map_err(|_| AMMError::PoolDataError)?,
             );
         }
 
-        /* TODO(jmcph4): actually handle pool data */
+        self.token_a =
+            <Address as SolValue>::abi_decode(words.get("token0").unwrap().as_le_slice(), false)?;
+        self.token_b =
+            <Address as SolValue>::abi_decode(words.get("token1").unwrap().as_le_slice(), false)?;
+
+        /* TODO(jmcph4): decode reserves */
+        /* TODO(jmcph4): fee */
 
         Ok(())
     }
