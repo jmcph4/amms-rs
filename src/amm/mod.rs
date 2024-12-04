@@ -10,7 +10,7 @@ use std::hash::{Hash, Hasher};
 
 use alloy::{
     network::Network,
-    primitives::{Address, B256, U256},
+    primitives::{keccak256, Address, StorageKey, B256, U256},
     providers::Provider,
     rpc::types::eth::Log,
     sol,
@@ -24,6 +24,10 @@ use serde::{Deserialize, Serialize};
 use crate::errors::AMMError;
 
 use self::{erc_4626::ERC4626Vault, uniswap_v2::UniswapV2Pool, uniswap_v3::UniswapV3Pool};
+
+pub fn slot_from_offset_and_address(offset: u64, address: Address) -> StorageKey {
+    keccak256([&offset.to_le_bytes(), address.into_word().as_slice()].concat())
+}
 
 sol! {
     /// Interface of the ERC20
